@@ -1771,13 +1771,9 @@ func (e *Endpoint) LeaveLocked(owner Owner) []error {
 	errors := []error{}
 
 	owner.RemoveFromEndpointQueue(uint64(e.ID))
-	if c := e.Consumable; c != nil {
-		c.Mutex.Lock()
-		if e.RealizedL4Policy != nil {
-			// Passing a new map of nil will purge all redirects
-			e.removeOldRedirects(owner, nil)
-		}
-		c.Mutex.Unlock()
+	if e.SecurityIdentity != nil && e.RealizedL4Policy != nil {
+		// Passing a new map of nil will purge all redirects
+		e.removeOldRedirects(owner, nil)
 	}
 
 	if e.PolicyMap != nil {
