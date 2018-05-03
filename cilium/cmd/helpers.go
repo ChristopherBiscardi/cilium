@@ -27,6 +27,7 @@ import (
 
 	"github.com/cilium/cilium/common"
 	"github.com/cilium/cilium/pkg/bpf"
+	"github.com/cilium/cilium/pkg/byteorder"
 	"github.com/cilium/cilium/pkg/endpoint"
 	"github.com/cilium/cilium/pkg/identity"
 	"github.com/cilium/cilium/pkg/maps/policymap"
@@ -269,11 +270,11 @@ func updatePolicyKey(cmd *cobra.Command, args []string, add bool) {
 		u8p := u8proto.U8proto(proto)
 		entry := fmt.Sprintf("%d %d/%s", label, port, u8p.String())
 		if add == true {
-			if err := policyMap.Allow(label, port, u8p, parsedTd); err != nil {
+			if err := policyMap.Allow(label, byteorder.HostToNetwork(port).(uint16), u8p, parsedTd); err != nil {
 				Fatalf("Cannot add policy key '%s': %s\n", entry, err)
 			}
 		} else {
-			if err := policyMap.Delete(label, port, u8p, parsedTd); err != nil {
+			if err := policyMap.Delete(label, byteorder.HostToNetwork(port).(uint16), u8p, parsedTd); err != nil {
 				Fatalf("Cannot delete policy key '%s': %s\n", entry, err)
 			}
 		}
