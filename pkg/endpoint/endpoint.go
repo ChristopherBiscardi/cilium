@@ -2475,16 +2475,19 @@ func (e *Endpoint) syncPolicyMap() error {
 		return fmt.Errorf("unable to dump PolicyMap for endpoint: %s", err)
 	}
 
-	for _, entry := range currentMapContents {
+	errors := []error{}
 
+	for _, entry := range currentMapContents {
 		// If key that is in policy map is not in desired state, just remove it.
 		if _, ok := e.desiredMapState[entry.Key]; !ok {
 			err := e.PolicyMap.DeleteKey(entry.Key)
 			if err != nil {
-				return err
+				log.Errorf("failed to delete key %s: %s", entry.Key, err)
+				errors = append(errors, err)
+			} else {
+				// Operation was successful, remove from realized state
+				delete(e.realizedMapState, entry.Key)
 			}
-			// Remove from realized state
-			delete(e.realizedMapState, entry.Key)
 		}
 	}
 
@@ -2492,11 +2495,19 @@ func (e *Endpoint) syncPolicyMap() error {
 		if _, ok := e.realizedMapState[keyToAdd]; !ok {
 			err := e.PolicyMap.AllowKey(keyToAdd)
 			if err != nil {
-				return err
+				log.Errorf("failed to add key %s: %s", keyToAdd, err)
+				errors = append(errors, err)
+			} else {
+				// Operation was successful, add to realized state.
+				e.realizedMapState[keyToAdd] = struct{}{}
 			}
-			e.realizedMapState[keyToAdd] = struct{}{}
 		}
 	}
+
+	if len(errors) > 0 {
+		return fmt.Errorf("synchronizing desired PolicyMap state failed: %s", errors)
+	}
+
 	return nil
 }
 
